@@ -1,11 +1,15 @@
 const fetch = require("node-fetch");
+const axios = require("axios")
+const cheerio = require("cheerio")
+
+const TOKEN='BQA1DWJmZ_ztuL4zXSXKVkEH4cV5qGWHMULcYgBHi7VPpm5RazOkzgxmm4mc85r5a2_69AYYKPHcO5coveMa60ivLgDjmTIkweoWvDm4fnsOlgWquDw'
 
 const getArtistsDetails = async artist => {
     const data = await fetch('https://api.spotify.com/v1/search?q=' + artist + '&type=artist',{
         method: 'GET',
         contentType: '',
         headers: {
-		    Authorization: 'Bearer BQBi8yxCV7_XoCiQR04n4ldiIums4J8sjKLqsekWYRwsq5kPs9cHdhDXWNKUN7EiKLiM94KhEZgYVDQvvIJdg0nz0mWhKy1pPynTcGiRxiKwphYKJiw'      
+		    Authorization: 'Bearer ' + TOKEN      
     }}).then(res => res.json())
 
     const followers = data.artists.items[0].followers.total;
@@ -24,13 +28,13 @@ const getArtistsDetails = async artist => {
     }
 }
 
-const generateData = async () => {
-    const artists = ['Taylor Swift','Drake','Ed Sheeran','The Weeknd','Bad Bunny','Eminem','Justin Bieber','Ariana Grande','BTS','Kanye West','Rihanna','Post Malone','Billie Eilish','Dua Lipa','Adele','Coldplay','Beyonce','Bruno Mars','Michael Jackson','Imagine Dragons','Maroon 5','Lana Del Rey','Elton John','Shawn Mendes']
+const generateData = async (names) => {
+    // const artists = ['Taylor Swift','Drake','Ed Sheeran','The Weeknd','Bad Bunny','Eminem','Justin Bieber','Ariana Grande','BTS','Kanye West','Rihanna','Post Malone','Billie Eilish','Dua Lipa','Adele','Coldplay','Beyonce','Bruno Mars','Michael Jackson','Imagine Dragons','Maroon 5','Lana Del Rey','Elton John','Shawn Mendes']
 
     const allData = [];
     
-    for(artist in artists){
-        const name = artists[artist]
+    for(artist in names){
+        const name = names[artist]
         const data = await getArtistsDetails(name);
         allData.push(data);
     };
@@ -39,19 +43,34 @@ const generateData = async () => {
 }
 
 const getTop40Artists = async () => {
-    const top40Page = await fetch('https://www.officialcharts.com/charts/uk-top-40-singles-chart/')
+    const top40Page = await axios.request({
+        method: "GET",
+        url: "https://www.officialcharts.com/charts/uk-top-40-singles-chart/",
+        headers: {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+        }
+    })
 
-    const artists = top40Page.document.getElementsByClassName("chart-artist")
+    const $ = cheerio.load(top40Page.data)
 
-    console.log(artists);
+    const names = []
+
+    const artists = $(".chart-content")
+        .find(".chart-artist")
+        .each((index, element) => {
+            const name = $(element).find("span").text()
+            names.push(name);
+        })
+
+    return names;
 }
 
 const main = async () => {    
-    getTop40Artists();
+    const names = await getTop40Artists();
 
-    // const spotifyData = await generateData();
+    const spotifyData = await generateData(names);
 
-    // spotifyData.forEach(d => console.log(d));
+    spotifyData.forEach(d => console.log(d));
 }
 
 main()
