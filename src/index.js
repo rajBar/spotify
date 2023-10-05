@@ -1,6 +1,8 @@
 const fetch = require("node-fetch");
 const axios = require("axios")
 const cheerio = require("cheerio")
+const uniqby = require('lodash.uniqby');
+
 const CREDS = require('../src/creds.json')
 
 const getArtistsDetailsFromName = async (artist, token) => {
@@ -95,7 +97,7 @@ const getNewReleaseArtists = async () => {
 }
 
 const generateData = async (names) => {
-    const artists = ['Taylor Swift','Drake','Ed Sheeran','The Weeknd','Bad Bunny','Eminem','Justin Bieber','Ariana Grande','BTS','Kanye West','Rihanna','Post Malone','Billie Eilish','Dua Lipa','Adele','Coldplay','Beyonce','Bruno Mars','Michael Jackson','Imagine Dragons','Maroon 5','Lana Del Rey','Elton John','Shawn Mendes'].concat(names)
+    const artists = ['Taylor Swift','Drake','Drake','Ed Sheeran','The Weeknd','Bad Bunny','Eminem','Justin Bieber','Ariana Grande','BTS','Kanye West','Rihanna','Post Malone','Billie Eilish','Dua Lipa','Adele','Coldplay','Beyonce','Bruno Mars','Michael Jackson','Imagine Dragons','Maroon 5','Lana Del Rey','Elton John','Shawn Mendes'].concat(names)
 
     const token = await generateToken();
     const allData = [];
@@ -145,8 +147,10 @@ const main = async () => {
 
     const spotifyData = await generateData(names);
 
-    spotifyData.forEach(d => console.log(d));
-    console.log(spotifyData.length);
+    const dataNoDupes = uniqby(spotifyData, (i) => i.id);
+
+    dataNoDupes.forEach(d => console.log(d));
+    console.log(dataNoDupes.length);
 }
 
 main()
