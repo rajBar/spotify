@@ -1,15 +1,14 @@
 const fetch = require("node-fetch");
 const axios = require("axios")
 const cheerio = require("cheerio")
+const CREDS = require('../src/creds.json')
 
-const TOKEN='BQA1DWJmZ_ztuL4zXSXKVkEH4cV5qGWHMULcYgBHi7VPpm5RazOkzgxmm4mc85r5a2_69AYYKPHcO5coveMa60ivLgDjmTIkweoWvDm4fnsOlgWquDw'
-
-const getArtistsDetails = async artist => {
+const getArtistsDetails = async (artist, token) => {
     const data = await fetch('https://api.spotify.com/v1/search?q=' + artist + '&type=artist',{
         method: 'GET',
         contentType: '',
         headers: {
-		    Authorization: 'Bearer ' + TOKEN      
+		    Authorization: 'Bearer ' + token      
     }}).then(res => res.json())
 
     const followers = data.artists.items[0].followers.total;
@@ -28,14 +27,29 @@ const getArtistsDetails = async artist => {
     }
 }
 
-const generateData = async (names) => {
-    // const artists = ['Taylor Swift','Drake','Ed Sheeran','The Weeknd','Bad Bunny','Eminem','Justin Bieber','Ariana Grande','BTS','Kanye West','Rihanna','Post Malone','Billie Eilish','Dua Lipa','Adele','Coldplay','Beyonce','Bruno Mars','Michael Jackson','Imagine Dragons','Maroon 5','Lana Del Rey','Elton John','Shawn Mendes']
+const generateToken = async () => {
+    const data = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        contentType: 'application/x-www-form-urlencoded',
+        body: new URLSearchParams({
+            'grant_type': 'client_credentials',
+            'client_id': CREDS.clientid,
+            'client_secret': CREDS.clientSecret
+        })
+    }).then(res => res.json())
 
+    return data.access_token;
+}
+
+const generateData = async (names) => {
+    const artists = ['Taylor Swift','Drake','Ed Sheeran','The Weeknd','Bad Bunny','Eminem','Justin Bieber','Ariana Grande','BTS','Kanye West','Rihanna','Post Malone','Billie Eilish','Dua Lipa','Adele','Coldplay','Beyonce','Bruno Mars','Michael Jackson','Imagine Dragons','Maroon 5','Lana Del Rey','Elton John','Shawn Mendes'].concat(names)
+
+    const token = await generateToken();
     const allData = [];
     
-    for(artist in names){
-        const name = names[artist]
-        const data = await getArtistsDetails(name);
+    for(artist in artists){
+        const name = artists[artist]
+        const data = await getArtistsDetails(name, token);
         allData.push(data);
     };
 
@@ -65,7 +79,7 @@ const getTop40Artists = async () => {
     return names;
 }
 
-const main = async () => {    
+const main = async () => { 
     const names = await getTop40Artists();
 
     const spotifyData = await generateData(names);
