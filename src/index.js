@@ -38,10 +38,20 @@ const generateData = async () => {
     return allData
 }
 
-const main = async () => {    
-    const spotifyData = await generateData();
+const getTop40Artists = async () => {
+    const top40Page = await fetch('https://www.officialcharts.com/charts/uk-top-40-singles-chart/')
 
-    spotifyData.forEach(d => console.log(d));
+    const artists = top40Page.document.getElementsByClassName("chart-artist")
+
+    console.log(artists);
+}
+
+const main = async () => {    
+    getTop40Artists();
+
+    // const spotifyData = await generateData();
+
+    // spotifyData.forEach(d => console.log(d));
 }
 
 main()
