@@ -6,6 +6,35 @@ const uniqby = require('lodash.uniqby');
 const CREDS = require('../src/creds.json')
 
 const getArtistsDetailsFromName = async (artist, token) => {
+
+    try {
+        const data = await fetch('https://api.spotify.com/v1/search?q=' + artist + '&type=artist', {
+            method: 'GET',
+            contentType: '',
+            headers: {
+                Authorization: 'Bearer ' + token      
+        }}).then(res => res.json())
+    
+        const name = data.artists.items[0].name;
+        const followers = data.artists.items[0].followers.total ? data.artists.items[0].followers.total : null;
+        const genres = data.artists.items[0].genres;
+        const popularity = data.artists.items[0].popularity;
+        const uri = data.artists.items[0].uri;
+        const id = data.artists.items[0].id;
+    
+        return {
+            name, 
+            id,
+            followers,
+            genres,
+            popularity,
+            uri
+        }
+        
+    } catch (error) {
+        console.log(error);
+    }
+
     const data = await fetch('https://api.spotify.com/v1/search?q=' + artist + '&type=artist', {
         method: 'GET',
         contentType: '',
@@ -14,7 +43,7 @@ const getArtistsDetailsFromName = async (artist, token) => {
     }}).then(res => res.json())
 
     const name = data.artists.items[0].name;
-    const followers = data.artists.items[0].followers.total;
+    const followers = data.artists.items[0].followers.total ? data.artists.items[0].followers.total : null;
     const genres = data.artists.items[0].genres;
     const popularity = data.artists.items[0].popularity;
     const uri = data.artists.items[0].uri;
@@ -30,29 +59,37 @@ const getArtistsDetailsFromName = async (artist, token) => {
     }
 }
 
-const getArtistsDetailsFromID = async (artistId, token) => {
-    const data = await fetch('https://api.spotify.com/v1/artists/' + artistId, {
+const getArtistsDetailsFromID = async (artistId, token) => {   
+    try {
+        const data = await fetch('https://api.spotify.com/v1/artists/' + artistId, {
         method: 'GET',
         contentType: '',
         headers: {
 		    Authorization: 'Bearer ' + token      
-    }}).then(res => res.json())
+        }}).then(res => res.json())
 
-    const name = data.name;
-    const followers = data.followers.total || null;
-    const genres = data.genres;
-    const popularity = data.popularity;
-    const uri = data.uri;
-    const id = data.id;
+        console.log(artistId)
 
-    return {
-        name, 
-        id,
-        followers,
-        genres,
-        popularity,
-        uri
+        const name = data.name;
+        const followers = data.followers.total ? data.followers.total : null;
+        const genres = data.genres;
+        const popularity = data.popularity;
+        const uri = data.uri;
+        const id = data.id;
+
+        return {
+            name, 
+            id,
+            followers,
+            genres,
+            popularity,
+            uri
+        }
+    } catch (error) {
+        console.log(error);
     }
+
+    
 }
 
 const generateToken = async () => {
@@ -69,10 +106,9 @@ const generateToken = async () => {
     return data.access_token;
 }
 
-const getNewReleaseArtists = async () => {
+const getNewReleaseArtists = async (token, country) => {
     let allIds = [];
     const iterations = 2; // how many times to iterate through and offset of 50, so 2=100, 3=150, 4=200 artists
-    const token = await generateToken();
 
     for(let i=0; i<iterations; i++) {
         const data = await fetch('https://api.spotify.com/v1/browse/new-releases?country=GB&offset=' + i*50 + '&limit=50', {
@@ -89,7 +125,6 @@ const getNewReleaseArtists = async () => {
         items.forEach(item => {
             item.artists.forEach(artist => idArray.push(artist.id))
         })
-        // data.albums.items.forEach(d => idArray.push(d.artists.id))
         allIds = allIds.concat(idArray);
     }
 
@@ -108,10 +143,24 @@ const generateData = async (names) => {
         allData.push(data);
     };
 
-    const newReleaseArtists = await getNewReleaseArtists(token);
+    const countries = ['GB','US','AR','AU','AT','BE','BO','BR','BG']//,'CA','CL','CO','CR','CY','CZ','DK','DO','DE','EC','EE','SV','FI','FR','GR'];
 
-    for(artistId in newReleaseArtists) {
-        const id = newReleaseArtists[artistId]
+    let newReleaseArtists = [];
+
+    for(index in countries){
+        const country = countries[index];
+        console.log(country);
+        const countryData = await getNewReleaseArtists(token, country);
+        newReleaseArtists = newReleaseArtists.concat(countryData);
+    }
+
+    console.log(newReleaseArtists.length)
+
+    for(index in newReleaseArtists) {
+        if( index % 75 == 0) {
+            setTimeout(() => {}, 10000)
+        } 
+        const id = newReleaseArtists[index]
         const data = await getArtistsDetailsFromID(id, token);
         allData.push(data);
     }
@@ -149,7 +198,8 @@ const main = async () => {
 
     const dataNoDupes = uniqby(spotifyData, (i) => i.id);
 
-    dataNoDupes.forEach(d => console.log(d));
+    // dataNoDupes.forEach(d => console.log(d));
+    console.log(spotifyData.length);
     console.log(dataNoDupes.length);
 }
 
