@@ -3,14 +3,15 @@ const axios = require("axios")
 const cheerio = require("cheerio")
 const CREDS = require('../src/creds.json')
 
-const getArtistsDetails = async (artist, token) => {
-    const data = await fetch('https://api.spotify.com/v1/search?q=' + artist + '&type=artist',{
+const getArtistsDetailsFromName = async (artist, token) => {
+    const data = await fetch('https://api.spotify.com/v1/search?q=' + artist + '&type=artist', {
         method: 'GET',
         contentType: '',
         headers: {
 		    Authorization: 'Bearer ' + token      
     }}).then(res => res.json())
 
+    const name = data.artists.items[0].name;
     const followers = data.artists.items[0].followers.total;
     const genres = data.artists.items[0].genres;
     const popularity = data.artists.items[0].popularity;
@@ -18,7 +19,32 @@ const getArtistsDetails = async (artist, token) => {
     const id = data.artists.items[0].id;
 
     return {
-        artist, 
+        name, 
+        id,
+        followers,
+        genres,
+        popularity,
+        uri
+    }
+}
+
+const getArtistsDetailsFromID = async (artistId, token) => {
+    const data = await fetch('https://api.spotify.com/v1/artists/' + artistId, {
+        method: 'GET',
+        contentType: '',
+        headers: {
+		    Authorization: 'Bearer ' + token      
+    }}).then(res => res.json())
+
+    const name = data.name;
+    const followers = data.followers.total || null;
+    const genres = data.genres;
+    const popularity = data.popularity;
+    const uri = data.uri;
+    const id = data.id;
+
+    return {
+        name, 
         id,
         followers,
         genres,
@@ -41,6 +67,33 @@ const generateToken = async () => {
     return data.access_token;
 }
 
+const getNewReleaseArtists = async () => {
+    let allIds = [];
+    const iterations = 2; // how many times to iterate through and offset of 50, so 2=100, 3=150, 4=200 artists
+    const token = await generateToken();
+
+    for(let i=0; i<iterations; i++) {
+        const data = await fetch('https://api.spotify.com/v1/browse/new-releases?country=GB&offset=' + i*50 + '&limit=50', {
+            method: 'GET',
+            contentType: '',
+            headers: {
+                Authorization: 'Bearer ' + token      
+        }}).then(res => res.json())
+         
+        // console.log(data);
+
+        const idArray = [];
+        const items = data.albums.items;
+        items.forEach(item => {
+            item.artists.forEach(artist => idArray.push(artist.id))
+        })
+        // data.albums.items.forEach(d => idArray.push(d.artists.id))
+        allIds = allIds.concat(idArray);
+    }
+
+    return allIds;
+}
+
 const generateData = async (names) => {
     const artists = ['Taylor Swift','Drake','Ed Sheeran','The Weeknd','Bad Bunny','Eminem','Justin Bieber','Ariana Grande','BTS','Kanye West','Rihanna','Post Malone','Billie Eilish','Dua Lipa','Adele','Coldplay','Beyonce','Bruno Mars','Michael Jackson','Imagine Dragons','Maroon 5','Lana Del Rey','Elton John','Shawn Mendes'].concat(names)
 
@@ -49,9 +102,17 @@ const generateData = async (names) => {
     
     for(artist in artists){
         const name = artists[artist]
-        const data = await getArtistsDetails(name, token);
+        const data = await getArtistsDetailsFromName(name, token);
         allData.push(data);
     };
+
+    const newReleaseArtists = await getNewReleaseArtists(token);
+
+    for(artistId in newReleaseArtists) {
+        const id = newReleaseArtists[artistId]
+        const data = await getArtistsDetailsFromID(id, token);
+        allData.push(data);
+    }
 
     return allData
 }
@@ -85,6 +146,7 @@ const main = async () => {
     const spotifyData = await generateData(names);
 
     spotifyData.forEach(d => console.log(d));
+    console.log(spotifyData.length);
 }
 
 main()
